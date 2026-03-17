@@ -60,6 +60,7 @@ export default function UploadPage() {
     try {
       await api.post('/reels', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 0,
         onUploadProgress: (e) => setProgress(Math.round((e.loaded * 100) / e.total))
       });
       setDone(true);

@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import axios from 'axios';
 import api from '../lib/axios';
 import { connectSocket, disconnectSocket } from '../lib/socket';
 
@@ -43,7 +42,7 @@ export const useAuthStore = create(
         set({ user: null, accessToken: null, refreshToken: null });
         disconnectSocket();
         if (token) {
-          try { await axios.post('/api/auth/logout', { refreshToken: token }); } catch {}
+          try { await api.post('/auth/logout', { refreshToken: token }); } catch {}
         }
       },
 

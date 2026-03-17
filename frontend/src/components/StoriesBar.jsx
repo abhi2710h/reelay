@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../lib/axios';
 import { useAuthStore } from '../store/authStore';
-import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -38,7 +38,7 @@ export default function StoriesBar() {
     const formData = new FormData();
     formData.append('media', file);
     try {
-      await api.post('/stories', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await api.post('/stories', formData, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 0 });
       toast.success('Story posted!');
       const r = await api.get('/stories');
       setStoryGroups(r.data);
@@ -156,20 +156,7 @@ export default function StoriesBar() {
                 >
                   <HiOutlineTrash size={18} />
                 </button>
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const name = window.prompt('Highlight name:');
-                    if (!name) return;
-                    try {
-                      await api.post('/highlights', { name, storyId: activeGroup.stories[activeStoryIndex]._id });
-                      toast.success('Added to highlight');
-                    } catch { toast.error('Failed'); }
-                  }}
-                  className="absolute bottom-24 right-4 glass text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-white/20 transition-colors"
-                >
-                  <HiOutlinePlus size={13} /> Highlight
-                </button>
+                <HighlightButton storyId={activeGroup.stories[activeStoryIndex]._id} />
               </>
             )}
             <div className="absolute inset-0 flex">
@@ -177,6 +164,92 @@ export default function StoriesBar() {
               <div className="w-2/3 h-full cursor-pointer" onClick={nextStory} />
             </div>
           </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function HighlightButton({ storyId }) {
+  const [open, setOpen] = useState(false);
+  const [highlights, setHighlights] = useState([]);
+  const [newName, setNewName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { user } = useAuthStore();
+
+  async function openPanel(e) {
+    e.stopPropagation();
+    setOpen(true);
+    try {
+      const { data } = await api.get('/highlights/user/' + user._id);
+      setHighlights(data);
+    } catch {}
+  }
+
+  async function addToExisting(highlightId) {
+    setLoading(true);
+    try {
+      await api.post(`/highlights/${highlightId}/stories`, { storyId });
+      toast.success('Added to highlight');
+      setOpen(false);
+    } catch { toast.error('Failed'); }
+    finally { setLoading(false); }
+  }
+
+  async function createNew(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!newName.trim()) return;
+    setLoading(true);
+    try {
+      await api.post('/highlights', { name: newName.trim(), storyId });
+      toast.success('Highlight created');
+      setOpen(false);
+      setNewName('');
+    } catch { toast.error('Failed'); }
+    finally { setLoading(false); }
+  }
+
+  return (
+    <>
+      <button
+        onClick={openPanel}
+        className="absolute bottom-24 right-4 glass text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-white/20 transition-colors"
+      >
+        <HiOutlinePlus size={13} /> Highlight
+      </button>
+
+      {open && (
+        <div className="absolute bottom-0 left-0 right-0 bg-dark-card border-t border-dark-border rounded-t-2xl p-4 z-10" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-semibold text-sm">Add to Highlight</span>
+            <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white"><HiOutlineX size={16} /></button>
+          </div>
+          {highlights.length > 0 && (
+            <div className="flex gap-3 overflow-x-auto pb-2 mb-3">
+              {highlights.map(h => (
+                <button key={h._id} onClick={() => addToExisting(h._id)} disabled={loading} className="flex flex-col items-center gap-1 flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-dark-muted border border-primary/30">
+                    {h.cover ? <img src={h.cover} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-lg">✨</div>}
+                  </div>
+                  <span className="text-[10px] text-gray-400 w-12 text-center truncate">{h.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <form onSubmit={createNew} className="flex gap-2">
+            <input
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              placeholder="New highlight name..."
+              maxLength={30}
+              className="flex-1 bg-dark-muted border border-dark-border rounded-xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-primary/50"
+              onClick={e => e.stopPropagation()}
+            />
+            <button type="submit" disabled={!newName.trim() || loading} className="px-3 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm font-semibold disabled:opacity-50">
+              Create
+            </button>
+          </form>
         </div>
       )}
     </>
