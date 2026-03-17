@@ -134,29 +134,44 @@ export default function StoriesBar() {
             <button onClick={(e) => { e.stopPropagation(); setActiveGroup(null); }} className="absolute top-8 right-4 text-white/80 hover:text-white text-xl w-8 h-8 flex items-center justify-center">✕</button>
 
             {activeGroup.creator._id === user?._id && (
-              <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (!window.confirm('Delete this story?')) return;
-                  try {
-                    await api.delete(`/stories/${activeGroup.stories[activeStoryIndex]._id}`);
-                    toast.success('Story deleted');
-                    const updated = activeGroup.stories.filter((_, i) => i !== activeStoryIndex);
-                    if (updated.length === 0) {
-                      setActiveGroup(null);
-                      setStoryGroups(prev => prev.filter(g => g.creator._id !== activeGroup.creator._id));
-                    } else {
-                      setActiveGroup({ ...activeGroup, stories: updated });
-                      setActiveStoryIndex(Math.min(activeStoryIndex, updated.length - 1));
-                    }
-                  } catch { toast.error('Failed to delete'); }
-                }}
-                className="absolute top-8 right-14 text-white/80 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center"
-              >
-                <HiOutlineTrash size={18} />
-              </button>
+              <>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!window.confirm('Delete this story?')) return;
+                    try {
+                      await api.delete(`/stories/${activeGroup.stories[activeStoryIndex]._id}`);
+                      toast.success('Story deleted');
+                      const updated = activeGroup.stories.filter((_, i) => i !== activeStoryIndex);
+                      if (updated.length === 0) {
+                        setActiveGroup(null);
+                        setStoryGroups(prev => prev.filter(g => g.creator._id !== activeGroup.creator._id));
+                      } else {
+                        setActiveGroup({ ...activeGroup, stories: updated });
+                        setActiveStoryIndex(Math.min(activeStoryIndex, updated.length - 1));
+                      }
+                    } catch { toast.error('Failed to delete'); }
+                  }}
+                  className="absolute top-8 right-14 text-white/80 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center"
+                >
+                  <HiOutlineTrash size={18} />
+                </button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const name = window.prompt('Highlight name:');
+                    if (!name) return;
+                    try {
+                      await api.post('/highlights', { name, storyId: activeGroup.stories[activeStoryIndex]._id });
+                      toast.success('Added to highlight');
+                    } catch { toast.error('Failed'); }
+                  }}
+                  className="absolute bottom-24 right-4 glass text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-white/20 transition-colors"
+                >
+                  <HiOutlinePlus size={13} /> Highlight
+                </button>
+              </>
             )}
-
             <div className="absolute inset-0 flex">
               <div className="w-1/3 h-full cursor-pointer" onClick={prevStory} />
               <div className="w-2/3 h-full cursor-pointer" onClick={nextStory} />
