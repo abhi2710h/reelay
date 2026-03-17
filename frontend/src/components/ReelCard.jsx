@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { HiOutlineHeart, HiHeart, HiOutlineChat, HiOutlineShare, HiOutlineBookmark, HiVolumeOff, HiVolumeUp } from 'react-icons/hi';
+import { Link, useNavigate } from 'react-router-dom';
+import { HiOutlineHeart, HiHeart, HiOutlineChat, HiOutlineShare, HiOutlineBookmark, HiVolumeOff, HiVolumeUp, HiOutlineDotsVertical, HiOutlineTrash, HiOutlineUser, HiOutlineFilm } from 'react-icons/hi';
 import { BsBookmarkFill } from 'react-icons/bs';
 import { BsMusicNote } from 'react-icons/bs';
 import api from '../lib/axios';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
-export default function ReelCard({ reel: initialReel, isActive }) {
+export default function ReelCard({ reel: initialReel, isActive, onDelete }) {
   const [reel, setReel] = useState(initialReel);
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -15,9 +15,13 @@ export default function ReelCard({ reel: initialReel, isActive }) {
   const [showComments, setShowComments] = useState(false);
   const [following, setFollowing] = useState(false);
   const [likeAnim, setLikeAnim] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const videoRef = useRef(null);
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const viewedRef = useRef(false);
+  const isOwner = reel.creator?._id === user?._id || reel.creator?._id?.toString() === user?._id;
 
   useEffect(() => {
     setLiked(reel.likes?.includes(user?._id));
@@ -86,6 +90,16 @@ export default function ReelCard({ reel: initialReel, isActive }) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this reel? This cannot be undone.')) return;
+    try {
+      await api.delete(`/reels/${reel._id}`);
+      toast.success('Reel deleted');
+      onDelete?.(reel._id);
+    } catch { toast.error('Failed to delete'); }
+    setShowMenu(false);
+  };
+
   return (
     <div className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
       <video
@@ -96,6 +110,7 @@ export default function ReelCard({ reel: initialReel, isActive }) {
         muted={muted}
         playsInline
         onDoubleClick={handleDoubleTap}
+        onClick={() => setShowAvatarMenu(false)}
       />
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10 pointer-events-none" />
@@ -113,19 +128,56 @@ export default function ReelCard({ reel: initialReel, isActive }) {
         {muted ? <HiVolumeOff size={18} className="text-white" /> : <HiVolumeUp size={18} className="text-white" />}
       </button>
 
+      {isOwner && (
+        <div className="absolute top-4 left-4 z-10">
+          <button onClick={() => setShowMenu(m => !m)} className="w-9 h-9 glass rounded-full flex items-center justify-center">
+            <HiOutlineDotsVertical size={18} className="text-white" />
+          </button>
+          {showMenu && (
+            <div className="absolute top-11 left-0 glass-dark border border-dark-border rounded-xl overflow-hidden min-w-[140px]">
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-2 w-full px-4 py-3 text-red-400 text-sm hover:bg-red-500/10 transition-colors"
+              >
+                <HiOutlineTrash size={16} />
+                Delete reel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="absolute bottom-20 md:bottom-6 left-4 right-16 z-10">
         <div className="flex items-center gap-2.5 mb-3">
-          <Link to={`/profile/${reel.creator?.username}`}>
+          <button onClick={() => setShowAvatarMenu(m => !m)} className="relative flex-shrink-0">
             <img
               src={reel.creator?.avatar || `https://ui-avatars.com/api/?name=${reel.creator?.username}&background=a855f7&color=fff`}
               alt={reel.creator?.username}
               className="w-10 h-10 rounded-full border-2 border-white/50 object-cover"
             />
-          </Link>
+          </button>
+          {showAvatarMenu && (
+            <div className="absolute bottom-28 md:bottom-14 left-4 glass-dark border border-dark-border rounded-2xl overflow-hidden z-30 min-w-[180px]" onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => { navigate(`/profile/${reel.creator?.username}`); setShowAvatarMenu(false); }}
+                className="flex items-center gap-3 w-full px-4 py-3 text-white text-sm hover:bg-white/5 transition-colors border-b border-dark-border"
+              >
+                <HiOutlineUser size={17} className="text-gray-400" />
+                View Profile
+              </button>
+              <button
+                onClick={() => { navigate(`/profile/${reel.creator?.username}?stories=1`); setShowAvatarMenu(false); }}
+                className="flex items-center gap-3 w-full px-4 py-3 text-white text-sm hover:bg-white/5 transition-colors"
+              >
+                <HiOutlineFilm size={17} className="text-gray-400" />
+                View Stories
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-2">
-            <Link to={`/profile/${reel.creator?.username}`} className="font-semibold text-white text-sm drop-shadow">
+            <button onClick={() => { navigate(`/profile/${reel.creator?.username}`); }} className="font-semibold text-white text-sm drop-shadow">
               @{reel.creator?.username}
-            </Link>
+            </button>
             {reel.creator?._id !== user?._id && (
               <button
                 onClick={handleFollow}

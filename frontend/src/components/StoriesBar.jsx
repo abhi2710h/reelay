@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../lib/axios';
 import { useAuthStore } from '../store/authStore';
-import { HiOutlinePlus } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function StoriesBar() {
   const [storyGroups, setStoryGroups] = useState([]);
   const [activeGroup, setActiveGroup] = useState(null);
   const [activeStoryIndex, setActiveStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
@@ -27,6 +30,25 @@ export default function StoriesBar() {
     }, 100);
     return () => clearInterval(interval);
   }, [activeGroup, activeStoryIndex]);
+
+  const handleStoryUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('media', file);
+    try {
+      await api.post('/stories', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success('Story posted!');
+      const r = await api.get('/stories');
+      setStoryGroups(r.data);
+    } catch {
+      toast.error('Failed to post story');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const openStory = (group) => {
     setActiveGroup(group);
@@ -52,14 +74,16 @@ export default function StoriesBar() {
     <>
       <div className="flex gap-4 px-4 py-3 overflow-x-auto scrollbar-hide border-b border-dark-border bg-dark-card/50">
         <button
-          onClick={() => navigate('/upload')}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
           className="flex flex-col items-center gap-1.5 flex-shrink-0"
         >
           <div className="w-14 h-14 rounded-full bg-dark-muted border-2 border-dashed border-dark-border flex items-center justify-center hover:border-primary/50 transition-colors">
-            <HiOutlinePlus size={20} className="text-gray-400" />
+            {uploading ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <HiOutlinePlus size={20} className="text-gray-400" />}
           </div>
-          <span className="text-[11px] text-gray-500 truncate w-14 text-center">Your story</span>
+          <span className="text-[11px] text-gray-500 truncate w-14 text-center">{uploading ? 'Posting...' : 'Your story'}</span>
         </button>
+        <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleStoryUpload} />
 
         {storyGroups.map(group => (
           <button key={group.creator._id} onClick={() => openStory(group)} className="flex flex-col items-center gap-1.5 flex-shrink-0">
@@ -108,6 +132,30 @@ export default function StoriesBar() {
             </div>
 
             <button onClick={(e) => { e.stopPropagation(); setActiveGroup(null); }} className="absolute top-8 right-4 text-white/80 hover:text-white text-xl w-8 h-8 flex items-center justify-center">✕</button>
+
+            {activeGroup.creator._id === user?._id && (
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!window.confirm('Delete this story?')) return;
+                  try {
+                    await api.delete(`/stories/${activeGroup.stories[activeStoryIndex]._id}`);
+                    toast.success('Story deleted');
+                    const updated = activeGroup.stories.filter((_, i) => i !== activeStoryIndex);
+                    if (updated.length === 0) {
+                      setActiveGroup(null);
+                      setStoryGroups(prev => prev.filter(g => g.creator._id !== activeGroup.creator._id));
+                    } else {
+                      setActiveGroup({ ...activeGroup, stories: updated });
+                      setActiveStoryIndex(Math.min(activeStoryIndex, updated.length - 1));
+                    }
+                  } catch { toast.error('Failed to delete'); }
+                }}
+                className="absolute top-8 right-14 text-white/80 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center"
+              >
+                <HiOutlineTrash size={18} />
+              </button>
+            )}
 
             <div className="absolute inset-0 flex">
               <div className="w-1/3 h-full cursor-pointer" onClick={prevStory} />

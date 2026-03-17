@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { getProfile, updateProfile, updateSettings, followUser, getUserReels, getSuggestedUsers, handleFollowRequest, getFollowRequests, togglePrivacy, getSavedReels, saveReel, blockUser, getBlockedUsers, getFollowers, removeFollower, getFollowersList } = require('../controllers/userController');
+const { getProfile, updateProfile, updateSettings, followUser, getUserReels, getSuggestedUsers, handleFollowRequest, getFollowRequests, togglePrivacy, getSavedReels, saveReel, blockUser, getBlockedUsers, getFollowers, removeFollower, getFollowersList, deactivateAccount, deleteAccount } = require('../controllers/userController');
 const { protect } = require('../middleware/auth');
 const { imageUpload } = require('../config/storage');
 
@@ -11,6 +11,8 @@ router.get('/blocked', protect, getBlockedUsers);
 router.put('/profile', protect, (req, res, next) => { req.uploadFolder = 'avatars'; next(); }, imageUpload.single('avatar'), updateProfile);
 router.put('/settings', protect, updateSettings);
 router.post('/toggle-privacy', protect, togglePrivacy);
+router.post('/deactivate', protect, deactivateAccount);
+router.delete('/delete-account', protect, deleteAccount);
 router.post('/follow-request/handle', protect, handleFollowRequest);
 router.get('/:username', protect, getProfile);
 router.get('/:username/connections', protect, getFollowersList);

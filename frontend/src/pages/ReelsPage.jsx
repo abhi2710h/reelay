@@ -93,7 +93,7 @@ export default function ReelsPage() {
           data-index={i}
           className="h-screen w-full snap-start snap-always flex-shrink-0"
         >
-          <ReelCard reel={reel} isActive={i === activeIndex} />
+          <ReelCard reel={reel} isActive={i === activeIndex} onDelete={(id) => setReels(prev => prev.filter(r => r._id !== id))} />
         </div>
       ))}
       {!hasMore && reels.length > 0 && (

@@ -57,6 +57,17 @@ exports.viewStory = async (req, res) => {
   }
 };
 
+exports.getMyStories = async (req, res) => {
+  try {
+    const stories = await Story.find({ creator: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(50);
+    res.json(stories);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.deleteStory = async (req, res) => {
   try {
     const story = await Story.findById(req.params.id);

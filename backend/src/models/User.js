@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   isAdmin: { type: Boolean, default: false },
   isBanned: { type: Boolean, default: false },
+  isDeactivated: { type: Boolean, default: false },
   isPrivate: { type: Boolean, default: false },
   followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

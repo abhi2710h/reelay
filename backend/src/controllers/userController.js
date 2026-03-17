@@ -282,6 +282,27 @@ exports.removeFollower = async (req, res) => {
   }
 };
 
+exports.deactivateAccount = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, { isDeactivated: true, isOnline: false });
+    res.json({ message: 'Account deactivated' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    await Reel.deleteMany({ creator: userId });
+    await User.findByIdAndUpdate({}, { $pull: { followers: userId, following: userId, blockedUsers: userId, savedReels: { $in: await Reel.find({ creator: userId }).distinct('_id') } } }, { multi: true });
+    await User.findByIdAndDelete(userId);
+    res.json({ message: 'Account permanently deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getFollowersList = async (req, res) => {
   try {
     const target = await User.findOne({ username: req.params.username })

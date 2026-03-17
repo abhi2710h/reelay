@@ -18,13 +18,15 @@ exports.getFeed = async (req, res) => {
     const total = await Reel.countDocuments({
       creator: { $in: allAllowedCreators },
       isRemoved: false,
-      isPublic: true
+      isPublic: true,
+      videoUrl: { $not: /^http:\/\/localhost/ }
     });
 
     const reels = await Reel.find({
       creator: { $in: allAllowedCreators },
       isRemoved: false,
-      isPublic: true
+      isPublic: true,
+      videoUrl: { $not: /^http:\/\/localhost/ }
     })
       .sort({ createdAt: -1 })
       .skip(skip)

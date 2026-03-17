@@ -18,6 +18,7 @@ const searchRoutes = require('./routes/search');
 const storyRoutes = require('./routes/stories');
 const adminRoutes = require('./routes/admin');
 const feedRoutes = require('./routes/feed');
+const highlightRoutes = require('./routes/highlights');
 const { errorHandler } = require('./middleware/errorHandler');
 const rateLimit = require('express-rate-limit');
 
@@ -25,6 +26,8 @@ process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', 
 
 const app = express();
 const server = http.createServer(app);
+
+app.set('trust proxy', 1);
 
 const io = new Server(server, {
   cors: {
@@ -76,6 +79,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feed', feedRoutes);
+app.use('/api/highlights', highlightRoutes);
 
 app.use(errorHandler);
 

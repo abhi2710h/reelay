@@ -1,11 +1,12 @@
-﻿import { useState, useEffect } from "react";
+﻿﻿import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   HiOutlineUser, HiBell, HiOutlineLockClosed, HiOutlineBan,
   HiOutlinePaperAirplane, HiOutlineAtSymbol, HiOutlineChatAlt,
   HiOutlineEyeOff, HiOutlineHeart, HiOutlineQuestionMarkCircle,
   HiOutlineShieldCheck, HiOutlineChevronRight, HiOutlineArrowLeft,
-  HiOutlineUserRemove, HiOutlineUsers
+  HiOutlineUserRemove, HiOutlineUsers, HiOutlineFilm, HiOutlinePhotograph,
+  HiOutlineTrash, HiOutlinePause
 } from "react-icons/hi";
 import api from "../lib/axios";
 import { useAuthStore } from "../store/authStore";
@@ -43,6 +44,20 @@ const sections = [
       { icon: <HiOutlineQuestionMarkCircle size={20} />, label: "Help", action: "help" },
       { icon: <HiOutlineShieldCheck size={20} />, label: "Privacy Policy", action: "privacyPolicy" },
     ]
+  },
+  {
+    title: "Content",
+    items: [
+      { icon: <HiOutlineFilm size={20} />, label: "Upload Reel", action: "uploadReel" },
+      { icon: <HiOutlinePhotograph size={20} />, label: "Upload Story", action: "uploadStory" },
+    ]
+  },
+  {
+    title: "Account Actions",
+    items: [
+      { icon: <HiOutlinePause size={20} />, label: "Deactivate account", action: "deactivate", danger: true },
+      { icon: <HiOutlineTrash size={20} />, label: "Delete account permanently", action: "deleteAccount", danger: true },
+    ]
   }
 ];
 
@@ -50,18 +65,60 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, updateUser, logout } = useAuthStore();
   const [activePanel, setActivePanel] = useState(null);
+  const reelInputRef = useRef(null);
+  const storyInputRef = useRef(null);
+
+  const handleUploadReel = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    navigate('/upload', { state: { file } });
+  };
+
+  const handleUploadStory = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('media', file);
+    try {
+      await api.post('/stories', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success('Story posted!');
+    } catch { toast.error('Failed to post story'); }
+    e.target.value = '';
+  };
 
   const handleAction = (action) => {
     if (action === "editProfile") navigate("/profile/" + user?.username);
+    else if (action === "uploadReel") reelInputRef.current?.click();
+    else if (action === "uploadStory") storyInputRef.current?.click();
     else setActivePanel(action);
   };
 
   if (activePanel) {
-    return <SettingsPanel action={activePanel} onBack={() => setActivePanel(null)} user={user} updateUser={updateUser} />;
+    return     function SettingsPanel({ action, onBack, user, updateUser, logout }) {
+      const panels = {
+        privacy: <PrivacyPanel onBack={onBack} user={user} updateUser={updateUser} />,
+        notifications: <NotificationsPanel onBack={onBack} user={user} updateUser={updateUser} />,
+        messages: <MessagesPanel onBack={onBack} user={user} updateUser={updateUser} />,
+        comments: <CommentsPanel onBack={onBack} user={user} updateUser={updateUser} />,
+        tags: <TagsPanel onBack={onBack} user={user} updateUser={updateUser} />,
+        likeCounts: <LikeCountsPanel onBack={onBack} />,
+        followers: <FollowersPanel onBack={onBack} />,
+        blocked: <BlockedPanel onBack={onBack} />,
+        muted: <MutedPanel onBack={onBack} />,
+        help: <HelpPanel onBack={onBack} />,
+        privacyPolicy: <PrivacyPolicyPanel onBack={onBack} />,
+        deactivate: <DeactivatePanel onBack={onBack} logout={logout} />,
+        deleteAccount: <DeleteAccountPanel onBack={onBack} logout={logout} />,
+      };
+      return panels[action] || null;
+    }
+;
   }
 
   return (
     <div className="max-w-2xl mx-auto pb-20 md:pb-4 overflow-y-auto h-screen">
+      <input ref={reelInputRef} type="file" accept="video/*" className="hidden" onChange={handleUploadReel} />
+      <input ref={storyInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleUploadStory} />
       <div className="sticky top-0 bg-dark z-10 px-4 py-4 border-b border-dark-border">
         <h2 className="text-xl font-bold">Settings</h2>
       </div>
@@ -77,8 +134,8 @@ export default function SettingsPage() {
                   className={"flex items-center justify-between w-full px-4 py-3.5 hover:bg-dark-muted transition-colors text-left" + (i < section.items.length - 1 ? " border-b border-dark-border" : "")}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-gray-400">{item.icon}</span>
-                    <span className="text-sm text-white">{item.label}</span>
+                    <span className={item.danger ? "text-red-400" : "text-gray-400"}>{item.icon}</span>
+                    <span className={"text-sm " + (item.danger ? "text-red-400" : "text-white")}>{item.label}</span>
                   </div>
                   <HiOutlineChevronRight size={16} className="text-gray-500" />
                 </button>
@@ -97,7 +154,7 @@ export default function SettingsPage() {
   );
 }
 
-function SettingsPanel({ action, onBack, user, updateUser }) {
+function SettingsPanel({ action, onBack, user, updateUser, logout }) {
   const panels = {
     privacy: <PrivacyPanel onBack={onBack} user={user} updateUser={updateUser} />,
     notifications: <NotificationsPanel onBack={onBack} user={user} updateUser={updateUser} />,
@@ -110,6 +167,8 @@ function SettingsPanel({ action, onBack, user, updateUser }) {
     muted: <MutedPanel onBack={onBack} />,
     help: <HelpPanel onBack={onBack} />,
     privacyPolicy: <PrivacyPolicyPanel onBack={onBack} />,
+    deactivate: <DeactivatePanel onBack={onBack} logout={logout} />,
+    deleteAccount: <DeleteAccountPanel onBack={onBack} logout={logout} />,
   };
   return panels[action] || null;
 }
@@ -495,6 +554,88 @@ function PrivacyPolicyPanel({ onBack }) {
         <p>You can delete your account and all associated data at any time from your settings.</p>
         <p className="text-gray-500 text-xs">Last updated: March 2026</p>
       </div>
+    </PanelWrapper>
+  );
+}
+
+function DeactivatePanel({ onBack, logout }) {
+  const [loading, setLoading] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+
+  const handleDeactivate = async () => {
+    if (!confirmed) return toast.error('Please check the confirmation box');
+    setLoading(true);
+    try {
+      await api.post('/users/deactivate');
+      toast.success('Account deactivated');
+      logout();
+    } catch { toast.error('Failed to deactivate'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <PanelWrapper title="Deactivate Account" onBack={onBack}>
+      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+        <p className="text-yellow-400 font-semibold text-sm mb-1">Temporary deactivation</p>
+        <p className="text-gray-300 text-sm">Your profile, reels and data will be hidden. You can reactivate by logging back in.</p>
+      </div>
+      <div className="bg-dark-card border border-dark-border rounded-xl p-4 flex items-start gap-3">
+        <input type="checkbox" id="deactivate-confirm" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5 accent-yellow-400 w-4 h-4 flex-shrink-0" />
+        <label htmlFor="deactivate-confirm" className="text-sm text-gray-300 cursor-pointer">I understand my account will be hidden until I log back in</label>
+      </div>
+      <button
+        onClick={handleDeactivate}
+        disabled={loading || !confirmed}
+        className="w-full py-3 rounded-xl border border-yellow-500/40 text-yellow-400 font-semibold text-sm hover:bg-yellow-500/10 transition-colors disabled:opacity-40"
+      >
+        {loading ? 'Deactivating...' : 'Deactivate Account'}
+      </button>
+    </PanelWrapper>
+  );
+}
+
+function DeleteAccountPanel({ onBack, logout }) {
+  const [loading, setLoading] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [typed, setTyped] = useState('');
+
+  const handleDelete = async () => {
+    if (!confirmed || typed !== 'DELETE') return toast.error('Type DELETE and check the box to confirm');
+    setLoading(true);
+    try {
+      await api.delete('/users/delete-account');
+      toast.success('Account permanently deleted');
+      logout();
+    } catch { toast.error('Failed to delete account'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <PanelWrapper title="Delete Account" onBack={onBack}>
+      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+        <p className="text-red-400 font-semibold text-sm mb-1">This action is permanent</p>
+        <p className="text-gray-300 text-sm">All your reels, stories, messages and account data will be permanently deleted. This cannot be undone.</p>
+      </div>
+      <div className="bg-dark-card border border-dark-border rounded-xl p-4 space-y-3">
+        <p className="text-sm text-gray-400">Type <span className="text-white font-mono font-bold">DELETE</span> to confirm</p>
+        <input
+          value={typed}
+          onChange={e => setTyped(e.target.value)}
+          placeholder="Type DELETE"
+          className="w-full bg-dark-muted border border-dark-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500/50"
+        />
+        <div className="flex items-start gap-3">
+          <input type="checkbox" id="delete-confirm" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5 accent-red-400 w-4 h-4 flex-shrink-0" />
+          <label htmlFor="delete-confirm" className="text-sm text-gray-300 cursor-pointer">I understand this is permanent and cannot be undone</label>
+        </div>
+      </div>
+      <button
+        onClick={handleDelete}
+        disabled={loading || !confirmed || typed !== 'DELETE'}
+        className="w-full py-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 font-semibold text-sm hover:bg-red-500/30 transition-colors disabled:opacity-40"
+      >
+        {loading ? 'Deleting...' : 'Permanently Delete Account'}
+      </button>
     </PanelWrapper>
   );
 }
