@@ -12,6 +12,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.password.length < 6) return toast.error('Password must be at least 6 characters');
     try {
       await register(form);
       navigate('/');
@@ -63,11 +64,12 @@ export default function RegisterPage() {
               <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
               <input
                 type={showPass ? 'text' : 'password'}
-                placeholder="Password"
+                placeholder="Password (min 6 characters)"
                 value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
                 className="input-field pl-11 pr-11"
                 required
+                minLength={6}
               />
               <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                 {showPass ? <HiOutlineEyeOff size={18} /> : <HiOutlineEye size={18} />}
